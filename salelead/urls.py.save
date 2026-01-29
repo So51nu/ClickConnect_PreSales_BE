@@ -1,0 +1,49 @@
+# salelead/urls.py
+from rest_framework.routers import DefaultRouter
+from django.urls import path, include
+from .views_interested_units import InterestedLeadUnitViewSet
+from rest_framework.routers import DefaultRouter
+from .views import (
+    SalesLeadViewSet,
+    SalesLeadUpdateViewSet,
+PaymentLeadViewSet,
+    SalesLeadStageHistoryViewSet,
+    SalesLeadDocumentViewSet,SalesLeadExtraInfoBulkAPIView,SiteVisitViewSet
+)
+from .views_email import SalesLeadEmailLogViewSet
+from .views import LeadCommentViewSet ,LeadOpportunityViewSet
+from .views_email_otp import start_lead_email_otp, verify_lead_email_otp
+from salelead.views import LeadOpportunityViewSet, LeadOpportunityStatusConfigViewSet,OnsiteRegistrationAPIView
+from .views_upcoming import UpcomingLeadActivityAPIView
+from salelead.integrations.views import ingest_opportunity
+from .views_integrations_zap import MetaZapierOpportunityIngestAPIView
+
+router = DefaultRouter()
+router.register(r"sales-lead-documents", SalesLeadDocumentViewSet, basename="sales-lead-document")  # 👈 ne
+router.register(r"sales-leads", SalesLeadViewSet, basename="sales-lead")
+router.register(r"sales-lead-updates", SalesLeadUpdateViewSet, basename="sales-lead-update")
+router.register(r"sales-lead-stages", SalesLeadStageHistoryViewSet, basename="sales-lead-stage")
+router.register(r"interested-units",InterestedLeadUnitViewSet,basename="interested-lead-unit",)
+router.register(r"email-logs", SalesLeadEmailLogViewSet, basename="sales-lead-email-log")
+router.register(r"lead-comments", LeadCommentViewSet, basename="lead-comment")
+router.register(r"site-visits", SiteVisitViewSet, basename="site-visits")
+router.register(r"lead-opportunities",LeadOpportunityViewSet,basename="lead-opportunities")
+router.register(r"lead-opportunity-status-configs",LeadOpportunityStatusConfigViewSet,basename="lead-opportunity-status-config",)
+router.register(r"payment-leads", PaymentLeadViewSet, basename="payment-leads")
+
+
+urlpatterns = [
+    path("sales-leads/email-otp/start/",start_lead_email_otp,name="saleslead-email-otp-start",),
+    path("sales-leads/email-otp/verify/",verify_lead_email_otp,name="saleslead-email-otp-verify",),
+    path("sales-leads/extra-info/", SalesLeadExtraInfoBulkAPIView.as_view(), name="saleslead-extra-info"),
+    path("integrations/opportunities/<str:source_system>/",ingest_opportunity,name="integrations-opportunity-ingest",),
+    path("onsite-registration/",OnsiteRegistrationAPIView.as_view(),name="sales-onsite-registration",),
+    path(
+        "upcoming-activity/",
+        UpcomingLeadActivityAPIView.as_view(),
+        name="upcoming-lead-activity",
+    ),
+
+    path("", include(router.urls)),
+
+]

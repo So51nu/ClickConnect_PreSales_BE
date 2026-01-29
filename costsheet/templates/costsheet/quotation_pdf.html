@@ -1,0 +1,265 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Quotation {{ cs.quotation_no }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 25mm 15mm 20mm 15mm;
+    }
+
+    body {
+      font-family: "Helvetica", "Arial", sans-serif;
+      font-size: 11px;
+      color: #111827;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .subheading {
+      font-size: 11px;
+      color: #4b5563;
+      margin-bottom: 2px;
+    }
+
+    .section {
+      margin-top: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      border-radius: 4px;
+    }
+
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 11px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 3px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+
+    th, td {
+      padding: 4px 3px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+      font-size: 10px;
+    }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    .totals-table td {
+      border: none;
+    }
+
+    .totals-table tr td:first-child {
+      font-weight: 600;
+    }
+
+    /* Big watermark for DRAFT */
+    {% if cs.status == "DRAFT" %}
+    .watermark {
+      position: fixed;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 60px;
+      color: rgba(150, 150, 150, 0.25);
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      z-index: -1;
+    }
+    {% endif %}
+  </style>
+</head>
+<body>
+  {% if cs.status == "DRAFT" %}
+    <div class="watermark">Draft</div>
+  {% endif %}
+
+  <div class="header">
+    <div class="header-title">Quotation / Cost Sheet</div>
+    <div class="subheading">
+      Quotation No: {{ cs.quotation_no }} |
+      Date: {{ cs.date|date:"d-m-Y" }} |
+      Valid Till: {{ cs.valid_till|date:"d-m-Y" }}
+    </div>
+    <div class="subheading">
+      Status: {{ status_label }}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Customer Details</div>
+    <table>
+      <tr>
+        <td><strong>Name</strong></td>
+        <td>{{ cs.customer_name }}</td>
+        <td><strong>Contact No.</strong></td>
+        <td>{{ cs.customer_phone }}</td>
+      </tr>
+      <tr>
+        <td><strong>Email</strong></td>
+        <td>{{ cs.customer_email }}</td>
+        <td><strong>Contact Person</strong></td>
+        <td>{{ cs.customer_contact_person }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Unit / Project Details</div>
+    <table>
+      <tr>
+        <td><strong>Project</strong></td>
+        <td>{{ cs.project_name }}</td>
+        <td><strong>Unit / Flat</strong></td>
+        <td>{{ cs.unit_no }}</td>
+      </tr>
+      <tr>
+        <td><strong>Tower</strong></td>
+        <td>{{ cs.tower_name }}</td>
+        <td><strong>Floor</strong></td>
+        <td>{{ cs.floor_number }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Base Value</div>
+    <table>
+      <tr>
+        <th>Area (sq.ft)</th>
+        <th>Rate (₹/sq.ft)</th>
+        <th>Base Value (₹)</th>
+        <th>Discount (%)</th>
+        <th>Discount (₹)</th>
+        <th>Net Base (₹)</th>
+      </tr>
+      <tr>
+        <td class="text-right">{{ cs.base_area_sqft|default:"-" }}</td>
+        <td class="text-right">{{ cs.base_rate_psf|default:"-" }}</td>
+        <td class="text-right">{{ cs.base_value|default:"-" }}</td>
+        <td class="text-right">{{ cs.discount_percent|default:"-" }}</td>
+        <td class="text-right">{{ cs.discount_amount|default:"-" }}</td>
+        <td class="text-right">{{ cs.net_base_value|default:"-" }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Additional Charges</div>
+    {% if additional_charges %}
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Description</th>
+          <th class="text-right">Amount (₹)</th>
+        </tr>
+        {% for ac in additional_charges %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td>{{ ac.name }}</td>
+            <td class="text-right">{{ ac.amount }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p>No additional charges.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <div class="section-title">Offers</div>
+    {% if applied_offers %}
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Offer</th>
+          <th>Notes</th>
+          <th class="text-right">Benefit (₹)</th>
+        </tr>
+        {% for ao in applied_offers %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td>{{ ao.offer.name }}</td>
+            <td>{{ ao.notes }}</td>
+            <td class="text-right">{{ ao.applied_amount|default:"-" }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p>No offers applied.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <div class="section-title">Taxes & Totals</div>
+    <table class="totals-table">
+      <tr>
+        <td>GST ({{ cs.gst_percent|default:"-" }}%)</td>
+        <td class="text-right">{{ cs.gst_amount|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td>Stamp Duty ({{ cs.stamp_duty_percent|default:"-" }}%)</td>
+        <td class="text-right">{{ cs.stamp_duty_amount|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td>Registration</td>
+        <td class="text-right">{{ cs.registration_amount|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td>Legal Fees</td>
+        <td class="text-right">{{ cs.legal_fee_amount|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td>Additional Charges Total</td>
+        <td class="text-right">{{ cs.additional_charges_total|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td>Offers Total (Benefit)</td>
+        <td class="text-right">-{{ cs.offers_total|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td><strong>Final Amount Payable (Incl. Taxes)</strong></td>
+        <td class="text-right"><strong>{{ cs.net_payable_amount|default:"-" }}</strong></td>
+      </tr>
+    </table>
+  </div>
+
+  {% if cs.terms_and_conditions %}
+    <div class="section">
+      <div class="section-title">Terms &amp; Conditions</div>
+      <div style="white-space: pre-wrap;">{{ cs.terms_and_conditions }}</div>
+    </div>
+  {% endif %}
+
+  {% if cs.notes %}
+    <div class="section">
+      <div class="section-title">Notes</div>
+      <div style="white-space: pre-wrap;">{{ cs.notes }}</div>
+    </div>
+  {% endif %}
+</body>
+</html>

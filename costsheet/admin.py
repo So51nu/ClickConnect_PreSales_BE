@@ -1,0 +1,4 @@
+from django.contrib import admin
+from .models import CostSheetTemplate,ProjectCostSheetTemplate,CostSheetAdditionalCharge,CostSheet,CostSheetAppliedOffer,CostSheetAttachment
+
+admin.site.register([CostSheetTemplate,ProjectCostSheetTemplate,CostSheetAttachment,CostSheetAdditionalCharge,CostSheet,CostSheetAppliedOffer])

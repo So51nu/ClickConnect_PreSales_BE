@@ -1,0 +1,11 @@
+db.sqlite3
+celerybeat-schedule.*
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+
+vasipresales_db.backup
+media/

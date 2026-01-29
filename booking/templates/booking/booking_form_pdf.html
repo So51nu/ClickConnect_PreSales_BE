@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Booking Form - {{ booking.form_ref_no }}</title>
+  <style>
+    body {
+      font-family: DejaVu Sans, Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .project-name {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .sub {
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .status-pill {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      font-size: 10px;
+    }
+    .draft-note {
+      margin-top: 4px;
+      font-size: 10px;
+      color: #b33;
+      font-weight: bold;
+    }
+
+    .section {
+      margin-top: 10px;
+    }
+    .section-title {
+      font-weight: bold;
+      font-size: 12px;
+      border-bottom: 1px solid #999;
+      margin-bottom: 4px;
+    }
+
+    table.meta {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.meta td {
+      padding: 2px 4px;
+      vertical-align: top;
+    }
+    table.meta td.label {
+      width: 30%;
+      font-weight: bold;
+    }
+
+    table.grid {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+    table.grid th,
+    table.grid td {
+      border: 1px solid #999;
+      padding: 3px 4px;
+      font-size: 10px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="project-name">
+      {{ booking.project.name }}
+    </div>
+    <div class="sub">
+      {% if booking.tower %}Tower: {{ booking.tower.name }}{% endif %}
+      {% if booking.floor %} / Floor: {{ booking.floor }}{% endif %}
+    </div>
+    <div class="sub">
+      Unit: {{ booking.unit }}
+    </div>
+
+    <div class="status-pill">
+      Status: {{ booking.status_label }}
+    </div>
+
+    {% if booking.status == "DRAFT" %}
+      <div class="draft-note">
+        DRAFT COPY – For discussion only
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 1. Booking Details -->
+  <div class="section">
+    <div class="section-title">Booking Details</div>
+    <table class="meta">
+      <tr>
+        <td class="label">Form Ref No</td>
+        <td>{{ booking.form_ref_no }}</td>
+      </tr>
+      <tr>
+        <td class="label">Booking Date</td>
+        <td>{{ booking.booking_date|date:"d-m-Y" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Office Address</td>
+        <td>{{ booking.office_address }}</td>
+      </tr>
+      <tr>
+        <td class="label">KYC Status</td>
+        <td>{{ booking.get_kyc_status_display }}</td>
+      </tr>
+      <!-- KYC amount is intentionally NOT shown as requested -->
+    </table>
+  </div>
+
+  <!-- 2. Primary Applicant -->
+  <div class="section">
+    <div class="section-title">Primary Applicant</div>
+    <table class="meta">
+      <tr>
+        <td class="label">Name</td>
+        <td>{{ booking.primary_title }} {{ booking.primary_full_name }}</td>
+      </tr>
+      <tr>
+        <td class="label">Primary Email</td>
+        <td>{{ booking.primary_email }}</td>
+      </tr>
+      <tr>
+        <td class="label">Primary Mobile</td>
+        <td>{{ booking.primary_mobile_number }}</td>
+      </tr>
+      <tr>
+        <td class="label">Email 2</td>
+        <td>{{ booking.email_2 }}</td>
+      </tr>
+      <tr>
+        <td class="label">Phone 2</td>
+        <td>{{ booking.phone_2 }}</td>
+      </tr>
+      <tr>
+        <td class="label">Permanent Address</td>
+        <td>{{ booking.permanent_address }}</td>
+      </tr>
+      <tr>
+        <td class="label">Correspondence Address</td>
+        <td>{{ booking.correspondence_address }}</td>
+      </tr>
+      <tr>
+        <td class="label">Preferred Correspondence</td>
+        <td>
+          {% if booking.preferred_correspondence == "PERMANENT" %}
+            Permanent Address
+          {% else %}
+            Correspondence Address
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td class="label">Residential Status</td>
+        <td>{{ booking.residential_status }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 3. Unit / Area Details -->
+  <div class="section">
+    <div class="section-title">Unit & Area Details</div>
+    <table class="meta">
+      <tr>
+        <td class="label">Super Built-up (sq.ft)</td>
+        <td>{{ booking.super_builtup_sqft }}</td>
+      </tr>
+      <tr>
+        <td class="label">Carpet Area (sq.ft)</td>
+        <td>{{ booking.carpet_sqft }}</td>
+      </tr>
+      <tr>
+        <td class="label">Balcony Area (sq.ft)</td>
+        <td>{{ booking.balcony_sqft }}</td>
+      </tr>
+      <tr>
+        <td class="label">Parking Required</td>
+        <td>{% if booking.parking_required %}Yes{% else %}No{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Parking Details</td>
+        <td>{{ booking.parking_details }}</td>
+      </tr>
+      <tr>
+        <td class="label">Parking Number</td>
+        <td>{{ booking.parking_number }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 4. Financials -->
+  <div class="section">
+    <div class="section-title">Financial Details</div>
+    <table class="meta">
+      <tr>
+        <td class="label">Agreement Value</td>
+        <td>{{ booking.agreement_value }}</td>
+      </tr>
+      <tr>
+        <td class="label">Agreement Value (in words)</td>
+        <td>{{ booking.agreement_value_words }}</td>
+      </tr>
+      <tr>
+        <td class="label">Booking Amount</td>
+        <td>{{ booking.booking_amount }}</td>
+      </tr>
+      <tr>
+        <td class="label">Other Charges</td>
+        <td>{{ booking.other_charges }}</td>
+      </tr>
+      <tr>
+        <td class="label">Total Advance</td>
+        <td>{{ booking.total_advance }}</td>
+      </tr>
+      <tr>
+        <td class="label">Agreement Done</td>
+        <td>{% if booking.agreement_done %}Yes{% else %}No{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">GST No</td>
+        <td>{{ booking.gst_no }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 5. Payment Plan -->
+  <div class="section">
+    <div class="section-title">Payment Plan</div>
+    <table class="meta">
+      <tr>
+        <td class="label">Type</td>
+        <td>
+          {% if booking.payment_plan_type == "MASTER" %}
+            Standard Project Plan
+          {% else %}
+            Custom Plan
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    {% if booking.payment_plan_type == "CUSTOM" and booking.custom_payment_plan %}
+      <div style="margin-top: 4px;">Custom Plan: {{ booking.custom_payment_plan.name }}</div>
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Milestone</th>
+            <th>Percentage (%)</th>
+            <th>Days</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for slab in booking.custom_payment_plan.slabs %}
+            <tr>
+              <td>{{ slab.order }}</td>
+              <td>{{ slab.name }}</td>
+              <td>{{ slab.percentage }}</td>
+              <td>{{ slab.days }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% elif booking.payment_plan_type == "MASTER" and booking.payment_plan %}
+      <div style="margin-top: 4px;">
+        Plan: {{ booking.payment_plan.name }}
+      </div>
+      <!-- If you want, you can later add slab table from PaymentPlan model -->
+    {% endif %}
+  </div>
+
+  <!-- 6. Loan Details -->
+  <div class="section">
+    <div class="section-title">Loan Details</div>
+    <table class="meta">
+      <tr>
+        <td class="label">Loan Required</td>
+        <td>{% if booking.loan_required %}Yes{% else %}No{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Bank Name</td>
+        <td>{{ booking.loan_bank_name }}</td>
+      </tr>
+      <tr>
+        <td class="label">Loan Amount Expected</td>
+        <td>{{ booking.loan_amount_expected }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 7. Co-Applicants -->
+  {% if applicants %}
+    <div class="section">
+      <div class="section-title">Applicants</div>
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Name</th>
+            <th>Relation</th>
+            <th>Email</th>
+            <th>Mobile</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in applicants %}
+            <tr>
+              <td>{{ a.sequence }}</td>
+              <td>{% if a.is_primary %}Primary{% else %}Co-applicant{% endif %}</td>
+              <td>{{ a.full_name }}</td>
+              <td>{{ a.relation }}</td>
+              <td>{{ a.email }}</td>
+              <td>{{ a.mobile_number }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+</body>
+</html>

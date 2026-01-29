@@ -1,0 +1,2261 @@
+from accounts.models import User
+from rest_framework import serializers
+from .models import (
+    SalesLead,
+	LeadOpportunityStatusConfig,
+    SiteVisit,
+    SalesLeadAddress,
+    SalesLeadUpdate,
+    SalesLeadStageHistory,
+    SalesLeadDocument,
+    SalesLeadCPInfo,
+    SalesLeadPersonalInfo,
+    SalesLeadProfessionalInfo,
+    SalesLeadProposalDocument,
+    LeadComment,LeadOpportunityStatusConfig
+)
+from .utils import get_latest_lead_remark
+from channel.models import ChannelPartnerProfile
+from clientsetup.models import Project
+from setup.models import UnitConfiguration
+from .models import InterestedLeadUnit,SalesLeadUpdateStatusHistory
+from clientsetup.models import Unit
+from channel.models import ChannelPartnerProfile
+from clientsetup.models import InventoryDocument
+from setup.models import OfferingType
+from clientsetup.models import Project, Inventory
+from leadmanage.models import LeadStage
+from .models import LeadOpportunity
+from setup.serializers import OfferingTypeSerializer
+from rest_framework import serializers
+from clientsetup.models import Project
+from setup.models import OfferingType
+from .models import LeadOpportunity, LeadOpportunityStatus
+from rest_framework import serializers
+from .models import SalesLead, SalesLeadStatusHistory
+from leadmanage.models import LeadStatus, LeadSubStatus
+from rest_framework import serializers
+from .models import LeadOpportunity, LeadOpportunityStatus
+
+
+
+class ChannelPartnerMiniSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    mobile_masked = serializers.SerializerMethodField()
+    email_masked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChannelPartnerProfile
+        fields = [
+            "id",
+            "company_name",
+            "user_name",
+            "mobile_masked",
+            "email_masked",
+            "status",
+            "onboarding_status",
+        ]
+
+    def get_user_name(self, obj):
+        u = obj.user
+        full = (u.get_full_name() or "").strip()
+        return full or u.username or u.email
+
+    def get_mobile_masked(self, obj):
+        return mask_phone(getattr(obj, "mobile_number", None))
+
+    def get_email_masked(self, obj):
+        u = obj.user
+        return mask_email(getattr(u, "email", None))
+
+
+
+from .models import SiteVisit, SiteVisitRescheduleHistory
+from django.utils import timezone
+from rest_framework import serializers
+
+
+class LeadMiniSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    purpose_name = serializers.CharField(source="purpose.name", read_only=True)
+
+    class Meta:
+        model = SalesLead
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "full_name",
+            "mobile_number",
+            "purpose_name",
+        ]
+
+    def get_full_name(self, obj):
+        f = obj.first_name or ""
+        l = obj.last_name or ""
+        return (f + " " + l).strip() or None
+
+
+
+
+
+
+
+
+class InventoryDocMiniSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InventoryDocument
+        fields = [
+            "id",
+            "doc_type",
+            "file_url",
+            "original_name",
+            "inventory_id",
+        ]
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if not obj.file:
+            return None
+        if request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url
+
+
+class LeadStageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeadStage
+        fields = ["id", "name", "order", "is_closed", "is_won"]
+
+
+class SalesLeadAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadAddress
+        fields = [
+            "flat_or_building",
+            "area",
+            "pincode",
+            "city",
+            "state",
+            "country",
+            "description",
+        ]
+
+
+class SalesLeadCPInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadCPInfo
+        fields = [
+            "cp_user",        # user id (CP user)
+            "referral_code",  # CP referral code
+        ]
+
+
+class SalesLeadPersonalInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadPersonalInfo
+        fields = [
+            "date_of_birth",
+            "date_of_anniversary",
+            "already_part_of_family",
+            "secondary_email",
+            "alternate_mobile",
+            "alternate_tel_res",
+            "alternate_tel_off",
+            "visiting_on_behalf",
+            "current_residence_ownership",
+            "current_residence_type",
+            "family_size",
+            "possession_desired_in",
+            "facebook",
+            "twitter",
+            "linkedin",
+        ]
+
+
+class SalesLeadProfessionalInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadProfessionalInfo
+        fields = [
+            "occupation",
+            "organization_name",
+            "office_location",
+            "office_pincode",
+            "designation",
+        ]
+
+
+class SalesLeadProposalDocumentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SalesLeadProposalDocument
+        fields = ["id", "file", "file_url", "created_at"]
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if not obj.file:
+            return None
+        if request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url
+
+
+
+
+class SalesLeadStageHistorySerializer(serializers.ModelSerializer):
+    sales_lead_name = serializers.SerializerMethodField()
+    stage_name = serializers.CharField(source="stage.name", read_only=True)
+    status_name = serializers.CharField(source="status.name", read_only=True)
+    sub_status_name = serializers.CharField(source="sub_status.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+
+    class Meta:
+        model = SalesLeadStageHistory
+        fields = [
+            "id",
+
+            # FKs
+            "sales_lead",
+            "sales_lead_name",
+
+            "stage",
+            "stage_name",
+
+            "status",
+            "status_name",
+
+            "sub_status",
+            "sub_status_name",
+
+            "event_date",
+            "notes",
+
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "sales_lead_name",
+            "stage_name",
+            "status_name",
+            "sub_status_name",
+            "created_by_name",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_sales_lead_name(self, obj):
+        lead = getattr(obj, "sales_lead", None)
+        if not lead:
+            return None
+
+        first = getattr(lead, "first_name", "") or ""
+        last = getattr(lead, "last_name", "") or ""
+        full = (first + " " + last).strip()
+        if full:
+            return full
+
+        return f"Lead #{lead.pk}"
+
+
+from rest_framework import serializers
+from django.utils import timezone
+from .models import PaymentLead  # adjust import path
+
+class KycPaymentLeadCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentLead
+        fields = [
+            "payment_type",      # EOI / BOOKING (tum decide karoge FE se)
+            "payment_method",    # ONLINE / POS / DRAFT_CHEQUE / NEFT_RTGS
+            "amount",
+            "payment_date",
+            "status",
+            "notes",
+            "payment_mode",
+            "transaction_no",
+            "cheque_number",
+            "cheque_date",
+            "bank_name",
+            "ifsc_code",
+            "branch_name",
+            "neft_rtgs_ref_no",
+        ]
+        extra_kwargs = {
+            "payment_date": {"required": False},
+            "status": {"required": False},  # so we can default to SUCCESS
+        }
+
+    def validate(self, attrs):
+        # optional: basic sanity
+        if attrs.get("amount") is None:
+            raise serializers.ValidationError({"amount": "Amount is required."})
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        booking = self.context.get("booking")
+        user = getattr(request, "user", None)
+
+        if booking is None:
+            raise serializers.ValidationError("Booking context is missing.")
+
+        lead = booking.sales_lead
+        if not lead:
+            # PaymentLead.lead null nahi ho sakta, to error
+            raise serializers.ValidationError(
+                {"booking": "This booking is not linked to any SalesLead."}
+            )
+
+        project = booking.project
+
+        # default payment_date
+        if "payment_date" not in validated_data or validated_data.get("payment_date") is None:
+            validated_data["payment_date"] = timezone.now()
+
+        # default status to SUCCESS if not provided
+        if not validated_data.get("status"):
+            validated_data["status"] = PaymentLead.PaymentStatus.SUCCESS
+
+        return PaymentLead.objects.create(
+            lead=lead,
+            project=project,
+            booking=booking,
+            created_by=user if (user and user.is_authenticated) else None,
+            for_kyc=True,  # 🔹 forced KYC flag
+            **validated_data,
+        )
+
+
+class SalesLeadDocumentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SalesLeadDocument
+        fields = ["id", "sales_lead", "title", "file", "file_url", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if not obj.file:
+            return None
+        if request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url
+
+
+def mask_phone(value: str | None) -> str | None:
+    """
+    No-op: return phone as-is (no masking).
+    """
+    return value
+
+
+def mask_email(value: str | None) -> str | None:
+    """
+    No-op: return email as-is (no masking).
+    """
+    return value
+
+
+
+class LeadMiniSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    purpose_name = serializers.CharField(source="purpose.name", read_only=True)
+
+    class Meta:
+        model = SalesLead
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "full_name",
+            "mobile_number",
+            "purpose_name",
+        ]
+
+    def get_full_name(self, obj):
+        f = obj.first_name or ""
+        l = obj.last_name or ""
+        return (f + " " + l).strip() or None
+
+
+
+
+
+class InterestedLeadUnitSerializer(serializers.ModelSerializer):
+    # Read-only helpers for UI
+    project_id = serializers.IntegerField(source="unit.project_id", read_only=True)
+    project_name = serializers.CharField(
+        source="unit.project.name", read_only=True
+    )
+    unit_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InterestedLeadUnit
+        # NOTE:
+        # - Agar tumhare model me `is_primary` field hai, to niche list me
+        #   "is_primary" add kar dena.
+        fields = [
+            "id",
+            "sales_lead",
+            "unit",
+            # "is_primary",   # <- uncomment if field exists in model
+            "project_id",
+            "project_name",
+            "unit_label",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("created_at", "updated_at")
+
+    def get_unit_label(self, obj):
+        """
+        UI ke liye readable unit label:
+        e.g. "Tower A / 5th / 502"
+        Missing fields ko gracefully handle karega.
+        """
+        u = obj.unit
+        if not u:
+            return ""
+        tower_name = getattr(getattr(u, "tower", None), "name", "")
+        floor_no = getattr(getattr(u, "floor", None), "number", "")
+        unit_no = getattr(u, "unit_no", "")
+        parts = [p for p in [tower_name, floor_no, unit_no] if p]
+        return " / ".join(parts) or f"Unit #{u.id}"
+
+
+    def validate_unit(self, unit: Unit):
+        """
+        Sirf AVAILABLE inventory ko hi link urkarne dena.
+        Ab availability_status / unit_status ko check kar rahe hain,
+        na ki 'status' (jo ACTIVE/DRAFT type hota hai).
+        """
+        # Pehle availability_status try karo
+        status_val = getattr(unit, "availability_status", None)
+
+        # Agar koi purana / alternate field ho to fallback:
+        if status_val is None:
+            status_val = getattr(unit, "unit_status", None)
+
+        if status_val is not None and str(status_val).upper() != "AVAILABLE":
+            raise serializers.ValidationError(
+                "Only AVAILABLE inventory units can be marked as interested."
+            )
+
+        return unit
+    
+
+class LeadCommentSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    # FK as ID
+    stage_at_time = serializers.PrimaryKeyRelatedField(
+        queryset=LeadStage.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    # read-only helper for UI
+    stage_at_time_name = serializers.CharField(
+        source="stage_at_time.name", read_only=True
+    )
+
+    class Meta:
+        model = LeadComment
+        fields = [
+            "id",
+            "sales_lead",
+            "text",
+            "stage_at_time",       # <- FK id
+            "stage_at_time_name",  # <- stage ka naam
+            "created_at",
+            "created_by_name",
+        ]
+        read_only_fields = ["id", "created_at", "created_by_name"]
+
+    def get_created_by_name(self, obj):
+        user = obj.created_by
+        if not user:
+            return None
+        return user.get_full_name() or user.username
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            validated_data.setdefault("created_by", request.user)
+        return super().create(validated_data)
+
+
+class LeadMiniSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    purpose_name = serializers.CharField(source="purpose.name", read_only=True)
+
+    class Meta:
+        model = SalesLead
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "full_name",
+            "mobile_number",
+            "purpose_name",
+        ]
+
+    def get_full_name(self, obj):
+        f = obj.first_name or ""
+        l = obj.last_name or ""
+        return (f + " " + l).strip() or None
+
+
+
+
+
+
+
+
+class ProjectMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ["id", "name"]
+
+
+class InventoryMiniSerializer(serializers.ModelSerializer):
+    unit_no = serializers.CharField(source="unit.unit_no", read_only=True)
+    tower_name = serializers.CharField(source="tower.name", read_only=True)
+    floor_number = serializers.CharField(source="floor.number", read_only=True)
+
+    class Meta:
+        model = Inventory
+        fields = [
+            "id",
+            "unit_no",
+            "tower_name",
+            "floor_number",
+            "unit_status",
+            "availability_status",
+        ]
+
+
+
+class UnitConfigMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UnitConfiguration
+        fields = ["id", "name", "code"]
+
+
+# sitevisit/serializers.py (ya jaha bhi rakhte ho)
+
+from .models import SiteVisit, SiteVisitRescheduleHistory
+from django.utils import timezone
+from rest_framework import serializers
+
+
+
+
+
+
+from .models import SiteVisit, SiteVisitRescheduleHistory
+from django.utils import timezone
+from rest_framework import serializers
+
+class SiteVisitNORMALSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SiteVisit
+        fields = "__all__"
+
+
+
+class SiteVisitSerializer(serializers.ModelSerializer):
+    # Write-only IDs
+    lead_id = serializers.IntegerField(write_only=True)
+    project_id = serializers.IntegerField(write_only=True)
+    unit_config_id = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True
+    )
+    inventory_id = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True
+    )
+
+    # Read-only nested
+    lead = LeadMiniSerializer(read_only=True)
+    project = ProjectMiniSerializer(read_only=True)
+    unit_config = UnitConfigMiniSerializer(read_only=True)
+    inventory = InventoryMiniSerializer(read_only=True)
+
+    created_by_name = serializers.SerializerMethodField(read_only=True)
+    reschedule_count = serializers.SerializerMethodField(read_only=True)
+
+    # 👇 Map DB field `actual_end_at` to API field `completed_at`
+    completed_at = serializers.DateTimeField(
+        source="actual_end_at",
+        required=False,
+        allow_null=True,
+    )
+
+    # 👇 Combined notes/remarks field
+    remarks = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = SiteVisit
+        fields = [
+            "id",
+            "lead",
+            "lead_id",
+            "project",
+            "project_id",
+            "unit_config",
+            "unit_config_id",
+            "inventory",
+            "inventory_id",
+            "member_name",
+            "member_mobile_number",
+            "scheduled_at",
+            "completed_at",        # <-- now mapped via source="actual_end_at"
+            "cancelled_at",
+            "cancelled_reason",
+            "status",
+            "created_at",
+            "created_by_name",
+            "reschedule_count",
+            "remarks",             # <-- new remarks field
+        ]
+
+    # ---------- helpers ----------
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None
+
+    def get_reschedule_count(self, obj):
+        # If queryset annotated with reschedule_count, use that,
+        # otherwise fall back to related manager count
+        return getattr(obj, "reschedule_count", None) or obj.reschedule_history.count()
+
+    def get_remarks(self, obj):
+        """
+        Priority for remarks:
+        outcome_notes → public_notes → internal_notes → cancelled_reason → no_show_reason
+        """
+        return (
+            obj.outcome_notes
+            or obj.public_notes
+            or obj.internal_notes
+            or obj.cancelled_reason
+            or obj.no_show_reason
+        )
+
+    # ---------- create / update ----------
+
+    def create(self, validated_data):
+        lead_id = validated_data.pop("lead_id")
+        project_id = validated_data.pop("project_id")
+        unit_config_id = validated_data.pop("unit_config_id", None)
+        inventory_id = validated_data.pop("inventory_id", None)
+
+        visit = SiteVisit.objects.create(
+            lead_id=lead_id,
+            project_id=project_id,
+            unit_config_id=unit_config_id,
+            inventory_id=inventory_id,
+            **validated_data,
+        )
+        return visit
+
+    def update(self, instance, validated_data):
+        if "lead_id" in validated_data:
+            instance.lead_id = validated_data.pop("lead_id")
+        if "project_id" in validated_data:
+            instance.project_id = validated_data.pop("project_id")
+        if "unit_config_id" in validated_data:
+            instance.unit_config_id = validated_data.pop("unit_config_id")
+        if "inventory_id" in validated_data:
+            instance.inventory_id = validated_data.pop("inventory_id")
+
+        return super().update(instance, validated_data)
+
+
+
+class LeadVisitStatusUpdateSerializer(serializers.Serializer):
+    """
+    Reuse-able serializer:
+    - SalesLeadViewSet.visit-status
+    - SiteVisitViewSet.update-status
+    """
+    STATUS_CHOICES = ("SCHEDULED",  "RESCHEDULED","COMPLETED", "CANCELLED", "NO_SHOW")
+
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+    timestamp = serializers.DateTimeField(required=False)
+    cancelled_reason = serializers.CharField(
+        required=False, allow_blank=True
+    )  
+    note = serializers.CharField(          # 👈 yeh note har status ke saath aa sakta hai
+        max_length=500,
+        allow_blank=True,
+        required=False,
+    )
+	
+
+
+class SiteVisitRescheduleSerializer(serializers.Serializer):
+    """
+    For POST /site-visits/<id>/reschedule/
+    """
+    new_scheduled_at = serializers.DateTimeField()
+    reason = serializers.CharField(
+        max_length=500,
+        allow_blank=True,
+        required=False,
+    )
+
+    def validate_new_scheduled_at(self, value):
+        if value < timezone.now():
+            raise serializers.ValidationError(
+                "New scheduled time must be in the future."
+            )
+        return value
+
+
+
+
+
+class LeadOpportunitySerializer(serializers.ModelSerializer):
+    status_config_id = serializers.IntegerField(
+        source="status_config.id", read_only=True
+    )
+    status_config_code = serializers.CharField(
+        source="status_config.code", read_only=True
+    )
+    status_config_label = serializers.CharField(
+        source="status_config.label", read_only=True
+    )
+    status_can_convert = serializers.BooleanField(
+        source="status_config.can_convert", read_only=True
+    )
+    project_name = serializers.SerializerMethodField()
+
+    project_id = serializers.PrimaryKeyRelatedField(
+        source="project",
+        queryset=Project.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
+    # ✅ OPTIONAL: owner_id if you want to assign to a specific user
+    owner_id = serializers.PrimaryKeyRelatedField(
+        source="owner",
+        queryset=User.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
+
+    class Meta:
+        model = LeadOpportunity
+        fields = [
+            "id",
+            "source_system",
+            "source_name",
+            "external_id",
+            "import_batch_id",
+"project_name",
+            # 🔹 public status info is only via status_config
+            "status_config_id",
+            "status_config_code",
+            "status_config_label",
+            "status_can_convert",
+          "project_id",
+            "owner_id",
+            "full_name",
+            "email",
+            "mobile_number",
+            "project",
+            "raw_payload",
+            "created_at",
+            "created_by",
+        ]
+        read_only_fields = (
+            "id",
+            "created_at",
+            "created_by",
+            "external_id",  # integrations set karenge
+            "status_config_id",
+            "status_config_code",
+            "status_config_label",
+            "status_can_convert",
+            "project",
+        )
+
+    def get_project_name(self, obj):
+        if not obj.project:
+            return None
+        return (
+            getattr(obj.project, "name", None)
+            or getattr(obj.project, "project_name", None)
+            or str(obj.project)
+        )
+
+
+class LeadOpportunityIngestSerializer(serializers.Serializer):
+    full_name = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    mobile_number = serializers.CharField(required=False, allow_blank=True)
+    project_id = serializers.IntegerField(required=False)
+    source_name = serializers.CharField(required=False, allow_blank=True)
+    source_lead_id = serializers.CharField(required=False, allow_blank=True)
+    external_id = serializers.CharField(required=False, allow_blank=True)
+
+    raw_payload = serializers.JSONField(required=False)
+
+    def validate(self, attrs):
+        if not attrs.get("source_lead_id") and not attrs.get("external_id"):
+            raise serializers.ValidationError(
+                "Either source_lead_id or external_id is required."
+            )
+        return attrs
+
+    def create(self, validated_data):
+        from .models import LeadOpportunity, LeadOpportunityStatus
+        from clientsetup.models import Project
+
+        request = self.context.get("request")
+        source_system = self.context.get("source_system")
+
+        external_id = (
+            validated_data.get("external_id")
+            or validated_data.get("source_lead_id")
+            or ""
+        )
+
+        project = None
+        proj_id = validated_data.pop("project_id", None)
+        if proj_id:
+            project = Project.objects.filter(id=proj_id).first()
+
+        raw = validated_data.pop("raw_payload", None)
+
+        source_name = validated_data.pop("source_name", "") or ""
+        
+        opp, created = LeadOpportunity.objects.update_or_create(
+            source_system=source_system,
+            external_id=external_id,
+            defaults={
+                "full_name": validated_data.get("full_name", ""),
+                "email": validated_data.get("email", ""),
+                "mobile_number": validated_data.get("mobile_number", ""),
+                "project": project,
+                "raw_payload": raw,
+                "status": LeadOpportunityStatus.NEW,
+                 "source_name": validated_data.get("source_name", ""),
+            },
+        )
+
+        if request and request.user.is_authenticated and not opp.created_by_id:
+            opp.created_by = request.user
+            opp.save(update_fields=["created_by"])
+
+        self._created = created
+        return opp
+
+
+
+
+class LeadStatusChangeSerializer(serializers.Serializer):
+    status_id = serializers.PrimaryKeyRelatedField(
+        queryset=LeadStatus.objects.all(),
+        source="status",
+        required=True,
+    )
+    sub_status_id = serializers.PrimaryKeyRelatedField(
+        queryset=LeadSubStatus.objects.all(),
+        source="sub_status",
+        required=False,
+        allow_null=True,
+    )
+    comment = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        lead: SalesLead = self.context["lead"]
+        status: LeadStatus = attrs["status"]
+        sub_status: LeadSubStatus | None = attrs.get("sub_status")
+
+        # 1) Same project check (very important in your setup)
+        if status.project_id != lead.project_id:
+            raise serializers.ValidationError("Status must belong to the same project as the lead.")
+
+        # 2) Optional: ensure sub_status belongs to this status (if your model has a FK)
+        if sub_status:
+            if sub_status.status_id != status.id:
+                raise serializers.ValidationError("Sub-status must belong to the selected status.")
+            if sub_status and sub_status.status.project_id != lead.project_id:
+                raise serializers.ValidationError("Sub-status does not belong to this project.")
+
+        return attrs
+
+    def save(self, **kwargs):
+        request = self.context["request"]
+        lead: SalesLead = self.context["lead"]
+        status: LeadStatus = self.validated_data["status"]
+        sub_status: LeadSubStatus | None = self.validated_data.get("sub_status")
+        comment: str = self.validated_data.get("comment", "")
+
+        old_status = lead.status
+        old_sub_status = lead.sub_status
+
+        # Update lead
+        lead.status = status
+        lead.sub_status = sub_status
+        lead.save(update_fields=["status", "sub_status", "updated_at"])
+
+        # Create history record
+        SalesLeadStatusHistory.objects.create(
+            sales_lead=lead,
+            old_status=old_status,
+            new_status=status,
+            old_sub_status=old_sub_status,
+            new_sub_status=sub_status,
+            changed_by=getattr(request, "user", None),
+            comment=comment,
+        )
+
+        return lead
+
+
+
+
+
+from rest_framework import serializers
+from .models import (
+    LeadOpportunity,
+    LeadOpportunityStatusConfig,
+    LeadOpportunityStatusHistory,
+    SalesLead,
+)
+
+
+class LeadOpportunityStatusChangeSerializer(serializers.Serializer):
+    status_config_id = serializers.IntegerField()
+    comment = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_status_config_id(self, value):
+        opp = self.context["opportunity"]
+
+        try:
+            cfg = LeadOpportunityStatusConfig.objects.get(
+                id=value,
+                is_active=True,
+            )
+        except LeadOpportunityStatusConfig.DoesNotExist:
+            raise serializers.ValidationError("Invalid status_config_id.")
+
+        # (optional) project-scope check agar chaho to:
+        # if opp.project_id and cfg.project_id and cfg.project_id != opp.project_id:
+        #     raise serializers.ValidationError("This status is not configured for this project.")
+
+        self._status_cfg = cfg
+        return value
+
+    def save(self, **kwargs):
+        opp: LeadOpportunity = self.context["opportunity"]
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+
+        status_cfg: LeadOpportunityStatusConfig = getattr(
+            self, "_status_cfg", None
+        )
+        if status_cfg is None:
+            status_cfg = LeadOpportunityStatusConfig.objects.get(
+                id=self.validated_data["status_config_id"]
+            )
+
+        old_cfg = opp.status_config
+
+        # 1) Opportunity par status + config update
+        opp.status = status_cfg.code
+        opp.status_config = status_cfg
+        opp.save(update_fields=["status", "status_config", "updated_at"])
+
+        # 2) Pehle se koi lead hai kya?
+        try:
+            sales_lead = opp.sales_lead  # OneToOne ya FK ka reverse
+        except SalesLead.DoesNotExist:
+            sales_lead = None
+
+        auto_converted = False
+
+        # 3) Yahi main rule:
+        #    agar can_convert = True hai, to lead create (agar already nahi hai)
+        if status_cfg.can_convert:
+
+            if sales_lead is None:
+                created_by = (
+                    user if getattr(user, "is_authenticated", False) else None
+                )
+
+                sales_lead = SalesLead.objects.create(
+                    first_name=opp.full_name or "",
+                    email=opp.email or "",
+                    mobile_number=opp.mobile_number or "",
+                    project=opp.project,          # yahi mapping tum use kar rahe ho
+                    source_opportunity=opp,
+                    created_by=created_by,
+                    assign_to=created_by,         # ya jo logic tum chaho
+                )
+                auto_converted = True
+            else:
+                # pehle hi convert ho chuka tha → sirf status/history update
+                auto_converted = False
+
+        # 4) History row
+        LeadOpportunityStatusHistory.objects.create(
+            opportunity=opp,
+            old_status_config=old_cfg,
+            new_status_config=status_cfg,
+            changed_by=user if getattr(user, "is_authenticated", False) else None,
+            comment=self.validated_data.get("comment", ""),
+            auto_converted=auto_converted,
+            sales_lead=sales_lead,
+        )
+
+        return {
+            "status_config": status_cfg,
+            "sales_lead": sales_lead,
+            "auto_converted": auto_converted,
+        }
+
+
+
+class SalesLeadUpdateStatusHistorySerializer(serializers.ModelSerializer):
+    old_status_label = serializers.CharField(
+        source="old_status.label", read_only=True
+    )
+    new_status_label = serializers.CharField(
+        source="new_status.label", read_only=True
+    )
+    changed_by_name = serializers.CharField(
+        source="changed_by.username", read_only=True
+    )
+
+    class Meta:
+        model = SalesLeadUpdateStatusHistory
+        fields = [
+            "id",
+            "sales_lead_update",
+
+            "old_status",
+            "old_status_label",
+            "new_status",
+            "new_status_label",
+
+            "changed_by",
+            "changed_by_name",
+            "comment",
+            "event_date",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "sales_lead_update",
+            "old_status",
+            "old_status_label",
+            "new_status_label",
+            "changed_by",
+            "changed_by_name",
+            "event_date",
+            "created_at",
+            "updated_at",
+        ]
+
+
+
+class SalesLeadUpdateSerializer(serializers.ModelSerializer):
+    # remarks -> DB field info
+    remarks = serializers.CharField(
+        source="info",
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
+
+    sales_lead_name = serializers.SerializerMethodField()
+    project_name = serializers.CharField(
+        source="sales_lead.project.name",
+        read_only=True,
+    )
+    created_by_name = serializers.CharField(
+        source="created_by.username",
+        read_only=True,
+    )
+    activity_status_name = serializers.CharField(
+        source="activity_status.label",
+        read_only=True,
+    )
+
+    status_history = SalesLeadUpdateStatusHistorySerializer(
+        many=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = SalesLeadUpdate
+        fields = [
+            "id",
+
+            # FKs
+            "sales_lead",
+            "sales_lead_name",
+            "project_name",
+
+            "update_type",
+            "title",
+            "remarks",              # 👈 comes from info
+            "event_date",
+            "status_history", 
+            "activity_status",      # 👈 FK id
+            "activity_status_name", # 👈 human label
+
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "sales_lead_name",
+            "project_name",
+            "activity_status_name",
+            "created_by_name",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_sales_lead_name(self, obj):
+        lead = getattr(obj, "sales_lead", None)
+        if not lead:
+            return None
+
+        first = getattr(lead, "first_name", "") or ""
+        last = getattr(lead, "last_name", "") or ""
+        full = (first + " " + last).strip()
+        if full:
+            return full
+
+        return f"Lead #{lead.pk}"
+
+
+
+
+class SalesLeadSerializer(serializers.ModelSerializer):
+    address = SalesLeadAddressSerializer(required=False)
+    offering_types = serializers.PrimaryKeyRelatedField(
+        many=True, required=False, queryset=OfferingType.objects.all()
+    )
+    lead_stages = serializers.SerializerMethodField()
+    offering_types_detail = OfferingTypeSerializer(many=True, read_only=True)
+    # FK to Project
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all()
+    )
+    latest_remarks = serializers.SerializerMethodField(read_only=True)
+    cp_referral_code = serializers.SerializerMethodField()
+
+    project_name = serializers.SerializerMethodField()
+
+    # owner display fields
+    first_owner_name = serializers.SerializerMethodField()
+    current_owner_name = serializers.SerializerMethodField()
+    assign_to_name = serializers.SerializerMethodField()
+
+    # CP display
+    channel_partner_name = serializers.SerializerMethodField()
+    channel_partner_detail = serializers.SerializerMethodField()
+
+    cp_info = SalesLeadCPInfoSerializer(read_only=True)
+    personal_info = SalesLeadPersonalInfoSerializer(read_only=True)
+    professional_info = SalesLeadProfessionalInfoSerializer(read_only=True)
+    proposal_documents = SalesLeadProposalDocumentSerializer(
+        many=True, read_only=True
+    )
+
+    project_inventory_docs = serializers.SerializerMethodField()
+    # taxonomy display
+    classification_name = serializers.SerializerMethodField()
+    sub_classification_name = serializers.SerializerMethodField()
+    source_name = serializers.SerializerMethodField()
+    sub_source_name = serializers.SerializerMethodField()
+    status_name = serializers.SerializerMethodField()
+    sub_status_name = serializers.SerializerMethodField()
+    purpose_name = serializers.SerializerMethodField()
+
+    updates = SalesLeadUpdateSerializer(many=True, read_only=True)
+    stage_history = SalesLeadStageHistorySerializer(many=True, read_only=True)
+    documents = SalesLeadDocumentSerializer(many=True, read_only=True)
+
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SalesLead
+        fields = [
+            "id",
+            "project",
+            "project_name",
+            "lead_stages",
+            "offering_types",
+            "offering_types_detail",
+            "first_name",
+            "last_name",
+            "full_name",
+                 "cp_referral_code",
+
+            "email",
+            "mobile_number",
+            "tel_res",
+            "tel_office",
+            "company",
+            "budget",
+            "annual_income",
+            "latest_remarks",
+            "channel_partner",
+            "channel_partner_name",
+            "channel_partner_detail",
+            "unknown_channel_partner",
+            "walking",
+
+            "first_owner",
+            "first_owner_name",
+            "current_owner",
+            "current_owner_name",
+            "assign_to",
+            "assign_to_name",
+
+            "project_inventory_docs",
+
+            "updates",
+            "stage_history",
+
+            "classification",
+            "classification_name",
+            "sub_classification",
+            "sub_classification_name",
+            "source",
+            "source_name",
+            "sub_source",
+            "sub_source_name",
+            "status",
+            "status_name",
+            "sub_status",
+            "sub_status_name",
+            "purpose",
+            "purpose_name",
+
+            "offering_types",
+            "address",
+
+            # 🔹 NEW extra info nested
+            "cp_info",
+            "personal_info",
+            "professional_info",
+            "proposal_documents",
+
+            "documents",
+
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "created_at",
+            "updated_at",
+            "project_name",
+            "full_name",
+            "offering_types_detail",
+            "first_owner_name",
+            "current_owner_name",
+              "cp_referral_code", 
+            "assign_to_name",
+            "channel_partner_name",
+            "classification_name",
+            "sub_classification_name",
+            "source_name",
+            "sub_source_name",
+            "status_name",
+            "sub_status_name",
+            "purpose_name",
+            # cp/personal/prof/proposal remain read-only here
+            "cp_info",
+            "personal_info",
+            "professional_info",
+            "proposal_documents",
+        ]
+
+    # ---------- create / update ----------
+    def get_latest_remarks(self, obj):
+        return get_latest_lead_remark(obj)
+    
+    def create(self, validated_data):
+        address_data = validated_data.pop("address", None)
+        offering_types = validated_data.pop("offering_types", [])
+
+        lead = SalesLead.objects.create(**validated_data)
+
+        # M2M
+        if offering_types:
+            lead.offering_types.set(offering_types)
+
+        # nested address
+        if address_data:
+            SalesLeadAddress.objects.create(sales_lead=lead, **address_data)
+
+        return lead
+
+    def _want_all_stages(self):
+        """Check ?include_all_stage=true in query params."""
+        request = self.context.get("request")
+        if not request:
+            return False
+        val = request.query_params.get("include_all_stage", "")
+        return str(val).lower() in ("1", "true", "yes", "y", "on")
+
+    def get_lead_stages(self, obj):
+        """
+        Always return all stages for this lead's project.
+        Frontend no longer needs ?include_all_stage=true.
+        """
+        project = getattr(obj, "project", None)
+        if not project:
+            return []
+
+        # uses related_name='lead_stages' on LeadStage.project
+        stages_qs = project.lead_stages.all().order_by("order")
+        return LeadStageSerializer(stages_qs, many=True).data
+
+
+    def update(self, instance, validated_data):
+        address_data = validated_data.pop("address", None)
+        offering_types = validated_data.pop("offering_types", None)
+
+        # simple scalar + FK fields (including project, channel_partner, walking, etc.)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # M2M
+        if offering_types is not None:
+            instance.offering_types.set(offering_types)
+
+        # nested address: create / update / delete
+        if address_data is not None:
+            addr = getattr(instance, "address", None)
+            if addr:
+                for attr, value in address_data.items():
+                    setattr(addr, attr, value)
+                addr.save()
+            else:
+                SalesLeadAddress.objects.create(
+                    sales_lead=instance, **address_data
+                )
+
+        return instance
+
+    # ---------- helper getters ----------
+
+    def get_full_name(self, obj):
+        name = (obj.first_name or "") + (" " + obj.last_name if obj.last_name else "")
+        return name.strip() or None
+
+    def get_project_name(self, obj):
+        proj = getattr(obj, "project", None)
+        return getattr(proj, "name", None)
+
+    def get_first_owner_name(self, obj):
+        return getattr(obj.first_owner, "username", None)
+
+    def get_current_owner_name(self, obj):
+        return getattr(obj.current_owner, "username", None)
+
+    def get_assign_to_name(self, obj):
+        return getattr(obj.assign_to, "username", None)
+
+    def get_cp_referral_code(self, obj):
+        """
+        Return Channel Partner referral_code for this lead, if any.
+        """
+        cp = getattr(obj, "channel_partner", None)
+        if not cp:
+            return None
+
+        # case 1: channel_partner is directly ChannelPartnerProfile
+        profile = cp
+
+        # case 2: channel_partner is User with .channel_profile
+        if not isinstance(cp, ChannelPartnerProfile) and hasattr(cp, "channel_profile"):
+            profile = cp.channel_profile
+
+        if not isinstance(profile, ChannelPartnerProfile):
+            return None
+
+        return profile.referral_code
+    
+    def get_channel_partner_name(self, obj):
+        cp = getattr(obj, "channel_partner", None)
+        # adjust agency_name/company_name jo bhi tumhare CP model me ho
+        return getattr(cp, "agency_name", None)
+
+    def get_classification_name(self, obj):
+        return getattr(obj.classification, "name", None)
+
+    def get_sub_classification_name(self, obj):
+        return getattr(obj.sub_classification, "name", None)
+
+    def get_source_name(self, obj):
+        return getattr(obj.source, "name", None)
+
+    def get_sub_source_name(self, obj):
+        return getattr(obj.sub_source, "name", None)
+
+    def get_status_name(self, obj):
+        return getattr(obj.status, "name", None)
+
+    def get_sub_status_name(self, obj):
+        return getattr(obj.sub_status, "name", None)
+
+    def get_purpose_name(self, obj):
+        return getattr(obj.purpose, "name", None)
+
+    def to_representation(self, instance):
+        """
+        Outgoing response me PII mask karo:
+        - email
+        - mobile_number
+        - tel_res
+        - tel_office
+        """
+        data = super().to_representation(instance)
+
+        # Email mask
+        if data.get("email"):
+            data["email"] = mask_email(data["email"])
+
+        # Phone / tel fields mask
+        for field in ("mobile_number", "tel_res", "tel_office"):
+            if data.get(field):
+                data[field] = mask_phone(data[field])
+
+        return data
+    
+
+    def get_channel_partner_name(self, obj):
+        """
+        Channel partner ka friendly naam:
+        - pehle company_name
+        - warna user ka full name / username / email
+        """
+        cp = getattr(obj, "channel_partner", None)
+        if not cp:
+            return None
+
+        # Agar channel_partner directly ChannelPartnerProfile hai:
+        profile = cp
+        user = getattr(profile, "user", None)
+
+        company = getattr(profile, "company_name", None) or ""
+        if company:
+            return company
+
+        if user:
+            full = (user.get_full_name() or "").strip()
+            return full or user.username or user.email
+
+        return None
+
+    def get_channel_partner_detail(self, obj):
+        """
+        Channel partner ka compact detail:
+        {
+          id,
+          company_name,
+          user_name,
+          mobile_masked,
+          email_masked,
+          status,
+          onboarding_status
+        }
+        """
+        cp = getattr(obj, "channel_partner", None)
+        if not cp:
+            return None
+
+        # yaha assume kar rahe hain channel_partner FK -> ChannelPartnerProfile
+        # agar FK User pe hai, to profile = cp.channel_profile lo.
+        profile = cp
+        if not isinstance(cp, ChannelPartnerProfile) and hasattr(cp, "channel_profile"):
+            profile = cp.channel_profile
+
+        if not isinstance(profile, ChannelPartnerProfile):
+            return None
+
+        return ChannelPartnerMiniSerializer(profile, context=self.context).data
+
+    def get_project_inventory_docs(self, obj):
+        """
+        Current lead ke project ke saare InventoryDocument
+        jinka doc_type FLOOR_PLAN ya PROJECT_PLAN hai.
+        """
+        project = getattr(obj, "project", None)
+        if not project:
+            return []
+
+        docs_qs = (
+            InventoryDocument.objects
+            .filter(
+                inventory__project_id=project.id,
+                doc_type__in=[InventoryDocument.FLOOR_PLAN,
+                              InventoryDocument.PROJECT_PLAN],
+            )
+            .select_related("inventory")
+            .order_by("inventory_id", "id")
+        )
+
+        return InventoryDocMiniSerializer(
+            docs_qs,
+            many=True,
+            context=self.context,
+        ).data
+    
+    def get_file_url(self, obj):
+        if not obj.file:
+            return None
+        return obj.file.url
+
+
+
+class LeadOpportunityStatusConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeadOpportunityStatusConfig
+        fields = ["id", "code", "label", "can_convert", "project"]
+
+
+
+
+
+# salelead/serializers.py
+from rest_framework import serializers
+
+from .models import PaymentLead, SalesLead
+
+
+class PaymentLeadSerializer(serializers.ModelSerializer):
+    # Read-only helper fields
+    lead_full_name = serializers.CharField(source="lead.get_full_name", read_only=True)
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
+    kyc_request_id = serializers.IntegerField(
+        source="kyc_request.id",
+        read_only=True,
+    )
+
+    class Meta:
+        model = PaymentLead
+        fields = [
+            "id",
+
+            # relations
+            "lead",
+            "lead_full_name",
+            "project",
+            "project_name",
+            "booking",
+
+            # core payment
+            "payment_type",
+            "payment_method",
+            "amount",
+            "payment_date",
+            "status",
+            "notes",
+
+            # ONLINE / POS
+            "payment_mode",       # UPI / CARD / etc
+            "transaction_no",
+            "pos_slip_image",
+
+            # DRAFT / CHEQUE
+            "cheque_number",
+            "cheque_date",
+            "bank_name",
+            "ifsc_code",
+            "branch_name",
+            "cheque_image",
+
+            # NEFT / RTGS
+            "neft_rtgs_ref_no",
+
+            # meta
+            "created_by",
+            "created_by_name",
+            "kyc_request_id",
+        ]
+        read_only_fields = [
+            "id",
+            "project",
+            "project_name",
+            "created_by",
+            "created_by_name",
+            "lead_full_name",
+"for_kyc",
+        ]
+
+    def validate(self, attrs):
+        """
+        Method-wise validation so BE == FE forms.
+        """
+        from decimal import Decimal
+        from .models import PaymentLead as PaymentLeadModel
+
+        instance = self.instance
+
+        payment_method = attrs.get("payment_method") or getattr(instance, "payment_method", None)
+        amount = attrs.get("amount") or getattr(instance, "amount", None)
+
+        errors = {}
+
+        # Amount > 0
+        if amount is not None:
+            if amount <= Decimal("0"):
+                errors["amount"] = "Amount must be greater than 0."
+
+        # ONLINE / POS: transaction_no required
+        if payment_method in [
+            PaymentLeadModel.PaymentMethod.ONLINE,
+            PaymentLeadModel.PaymentMethod.POS,
+        ]:
+            transaction_no = attrs.get("transaction_no") or getattr(instance, "transaction_no", None)
+            if not transaction_no:
+                errors["transaction_no"] = "Transaction No is required for ONLINE/POS payments."
+
+        # DRAFT / CHEQUE: multiple required
+        if payment_method == PaymentLeadModel.PaymentMethod.DRAFT_CHEQUE:
+            cheque_number = attrs.get("cheque_number") or getattr(instance, "cheque_number", None)
+            cheque_date = attrs.get("cheque_date") or getattr(instance, "cheque_date", None)
+            bank_name = attrs.get("bank_name") or getattr(instance, "bank_name", None)
+            ifsc_code = attrs.get("ifsc_code") or getattr(instance, "ifsc_code", None)
+            branch_name = attrs.get("branch_name") or getattr(instance, "branch_name", None)
+
+            if not cheque_number:
+                errors["cheque_number"] = "Cheque Number is required for Draft/Cheque payments."
+            if not cheque_date:
+                errors["cheque_date"] = "Cheque Date is required for Draft/Cheque payments."
+            if not bank_name:
+                errors["bank_name"] = "Bank Name is required for Draft/Cheque payments."
+            if not ifsc_code:
+                errors["ifsc_code"] = "IFSC Code is required for Draft/Cheque payments."
+            if not branch_name:
+                errors["branch_name"] = "Branch Name is required for Draft/Cheque payments."
+
+        # NEFT / RTGS
+        if payment_method == PaymentLeadModel.PaymentMethod.NEFT_RTGS:
+            ref_no = attrs.get("neft_rtgs_ref_no") or getattr(instance, "neft_rtgs_ref_no", None)
+            if not ref_no:
+                errors["neft_rtgs_ref_no"] = "NEFT / RTGS Ref.No is required for NEFT/RTGS payments."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
+
+from django.utils import timezone
+from rest_framework import serializers
+
+from clientsetup.models import Project, Tower, Floor, Inventory
+from channel.models import ChannelPartnerProfile
+from leadmanage.models import LeadStage
+from salelead.models import SalesLead, SiteVisit  # and Stage history / address as per your app
+from salelead.models import SalesLeadStageHistory, SalesLeadAddress  # adjust names if different
+from setup.models import UnitConfiguration  # if needed
+from salelead.models import SiteVisitType  # your enum for visit_type
+
+from leadmanage.models import LeadPurpose,LeadSource
+
+from django.utils import timezone
+from rest_framework import serializers
+
+from clientsetup.models import Project, Tower, Floor, Inventory
+from channel.models import ChannelPartnerProfile
+from leadmanage.models import LeadStage
+from salelead.models import SalesLead, SiteVisit  # and Stage history / address as per your app
+from salelead.models import SalesLeadStageHistory, SalesLeadAddress  # adjust names if different
+ # if needed
+from salelead.models import SiteVisitType  # your enum for visit_type
+
+
+
+
+
+
+from django.utils import timezone
+from rest_framework import serializers
+
+from clientsetup.models import Project, Tower, Floor, Inventory
+from channel.models import ChannelPartnerProfile
+from leadmanage.models import LeadStage
+from salelead.models import SalesLead, SiteVisit  # and Stage history / address as per your app
+from salelead.models import SalesLeadStageHistory, SalesLeadAddress  # adjust names if different
+from salelead.models import SiteVisitType  # your enum for visit_type
+
+from salelead.models import (
+    SalesLead,
+    SiteVisit,
+    SalesLeadStageHistory,
+    SalesLeadAddress,
+    LeadOpportunity,   # 👈 for opportunity conversion
+    SiteVisitType,     # optional: if you want to use visit_type
+)
+from salelead.models import SiteVisitType  # if you want to use visit_type (optional)
+from clientsetup.models import UnitConfiguration  # 👈 adjust depending on where it actually lives
+
+
+
+
+# salelead/serializers.py (same file, neeche add karo)
+from booking.models import BookingKycRequest  # yaha direct import ok
+
+class KycPaymentLeadCreateSerializer(serializers.ModelSerializer):
+    # KYC request ID – required
+    kyc_request_id = serializers.PrimaryKeyRelatedField(
+        queryset=BookingKycRequest.objects.all(),
+        write_only=True,
+        source="kyc_request",
+        help_text="BookingKycRequest id for which this payment is made.",
+    )
+
+    class Meta:
+        model = PaymentLead
+        fields = [
+            "kyc_request_id",     # 🔹 custom
+            "payment_type",
+            "payment_method",
+            "amount",
+            "payment_date",
+            "status",
+            "notes",
+            "payment_mode",
+            "transaction_no",
+            "cheque_number",
+            "cheque_date",
+            "bank_name",
+            "ifsc_code",
+            "branch_name",
+            "neft_rtgs_ref_no",
+        ]
+        extra_kwargs = {
+            "payment_date": {"required": False},
+            "status": {"required": False},  # default SUCCESS if missing
+        }
+
+    def validate(self, attrs):
+        if attrs.get("amount") is None:
+            raise serializers.ValidationError({"amount": "Amount is required."})
+        if attrs.get("amount") <= 0:
+            raise serializers.ValidationError({"amount": "Amount must be > 0."})
+        return attrs
+
+    def create(self, validated_data):
+        """
+        - booking context se milega
+        - lead & project booking se derive
+        - for_kyc = True
+        - status default SUCCESS
+        - kyc_request as FK
+        """
+        request = self.context.get("request")
+        booking = self.context.get("booking")
+        user = getattr(request, "user", None)
+
+        if booking is None:
+            raise serializers.ValidationError("Booking context is missing.")
+
+        lead = booking.sales_lead
+        if not lead:
+            raise serializers.ValidationError(
+                {"booking": "This booking is not linked to any SalesLead."}
+            )
+
+        project = booking.project
+
+        kyc_request = validated_data.get("kyc_request")
+        if kyc_request is None:
+            raise serializers.ValidationError({"kyc_request_id": "KYC request is required."})
+
+        # Project consistency
+        if kyc_request.project_id != project.id:
+            raise serializers.ValidationError(
+                {"kyc_request_id": "KYC request belongs to different project than booking."}
+            )
+
+        # Default payment_date
+        if not validated_data.get("payment_date"):
+            validated_data["payment_date"] = timezone.now()
+
+        # Default status
+        if not validated_data.get("status"):
+            validated_data["status"] = PaymentLead.PaymentStatus.SUCCESS
+
+        return PaymentLead.objects.create(
+            lead=lead,
+            project=project,
+            booking=booking,
+            created_by=user if (user and user.is_authenticated) else None,
+            for_kyc=True,
+            **validated_data,
+        )
+
+
+
+
+
+
+
+class OnsiteRegistrationSerializer(serializers.Serializer):
+    """
+    Onsite Registration:
+      - Creates or converts to SalesLead (walking = True)
+      - optional SalesLeadAddress (residential address)
+      - SalesLeadStageHistory for first LeadStage(for_site=True)
+      - SiteVisit linked to that lead
+
+    Rules:
+      - No tower / floor / inventory / interest_unit
+      - High-level config via unit_configuration_id (2BHK / 3BHK / etc.)
+      - If SalesLead already exists for (project, mobile) -> error
+      - Else if LeadOpportunity exists for (project, mobile) -> convert to SalesLead
+        and fill/update with onsite data
+    """
+
+    # ---------------- Basic details ----------------
+    project_id = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(), source="project"
+    )
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(
+        max_length=150, required=False, allow_blank=True
+    )
+    mobile_number = serializers.CharField(max_length=20)
+    email = serializers.EmailField(required=False, allow_blank=True)
+
+    # Nationality + Age (radio from form)
+    nationality = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )  # expects INDIAN / NRI / OTHER
+    age_group = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )  # expects LT20 / 20_25 / 26_35 / ...
+
+    # ---------------- Lead taxonomy / numbers ----------------
+    budget = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+    )
+
+    purpose_id = serializers.PrimaryKeyRelatedField(
+        queryset=LeadPurpose.objects.all(),
+        source="purpose",
+        required=False,
+        allow_null=True,
+    )
+
+    source_id = serializers.PrimaryKeyRelatedField(
+        queryset=LeadSource.objects.all(),
+        source="source",
+        required=False,
+        allow_null=True,
+    )
+
+    sub_source_id = serializers.PrimaryKeyRelatedField(
+        queryset=LeadSource.objects.all(),
+        source="sub_source",
+        required=False,
+        allow_null=True,
+    )
+
+    # Configuration – 2BHK / 3BHK / 4BHK Jodi (no actual unit)
+    unit_configuration_id = serializers.PrimaryKeyRelatedField(
+        queryset=UnitConfiguration.objects.all(),
+        source="unit_configuration",
+        required=False,
+        allow_null=True,
+    )
+
+    # ---------------- Address from form ----------------
+    residential_address = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
+    residence_city = serializers.CharField(
+        max_length=80, required=False, allow_blank=True
+    )
+    residence_locality = serializers.CharField(
+        max_length=120, required=False, allow_blank=True
+    )
+    residence_pincode = serializers.CharField(
+        max_length=20, required=False, allow_blank=True
+    )
+
+    # ---------------- Channel partner / referral ----------------
+    has_channel_partner = serializers.BooleanField(required=False, default=False)
+    channel_partner_id = serializers.PrimaryKeyRelatedField(
+        queryset=ChannelPartnerProfile.objects.all(),
+        source="channel_partner",
+        required=False,
+        allow_null=True,
+    )
+
+    # Simple free-text referral – will go in unknown_channel_partner
+    referral_name = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
+    referral_mobile = serializers.CharField(
+        max_length=20, required=False, allow_blank=True
+    )
+
+    # ---------------- Visit meta ----------------
+    visit_datetime = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        help_text="If not sent, defaults to now()",
+    )
+    terms_accepted = serializers.BooleanField()
+
+    # ---------------- Validation ----------------
+    def validate(self, attrs):
+        # 1) Terms must be accepted
+        if not attrs.get("terms_accepted"):
+            raise serializers.ValidationError(
+                {"terms_accepted": "You must agree to the terms and conditions."}
+            )
+
+        # 2) CP required if has_channel_partner = True
+        has_cp = attrs.get("has_channel_partner", False)
+        cp = attrs.get("channel_partner")
+        if has_cp and not cp:
+            raise serializers.ValidationError(
+                {
+                    "channel_partner_id": "Channel partner is required when CP is selected."
+                }
+            )
+
+        return attrs
+
+    def _clean_choice(self, raw_value, choices_enum):
+        """
+        Helper: raw string (from app) ko model choice me normalise karega.
+        Unknown / blank => None.
+        """
+        if not raw_value:
+            return None
+        s = str(raw_value).strip().upper()
+        valid_keys = {c[0] for c in choices_enum.choices}
+        return s if s in valid_keys else None
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        user = request.user
+
+        project = validated_data["project"]
+        first_name = (validated_data.get("first_name") or "").strip()
+        last_name = (validated_data.get("last_name") or "").strip()
+        mobile_number = validated_data["mobile_number"].strip()
+        email = (validated_data.get("email") or "").strip()
+
+        unit_configuration = validated_data.get("unit_configuration")
+        channel_partner = validated_data.get("channel_partner")
+        visit_dt = validated_data.get("visit_datetime") or timezone.now()
+
+        # --- nationality / age_group normalise ---
+        nationality = self._clean_choice(
+            validated_data.get("nationality"),
+            SalesLead.Nationality,
+        )
+        age_group = self._clean_choice(
+            validated_data.get("age_group"),
+            SalesLead.AgeGroup,
+        )
+
+        # --- lead taxonomy / numbers ---
+        budget = validated_data.get("budget")
+        purpose = validated_data.get("purpose")
+        source = validated_data.get("source")
+        sub_source = validated_data.get("sub_source")
+
+        # Referral text -> unknown_channel_partner
+        referral_name = (validated_data.get("referral_name") or "").strip()
+        referral_mobile = (validated_data.get("referral_mobile") or "").strip()
+        unknown_cp = ""
+        if referral_name or referral_mobile:
+            unknown_cp = f"{referral_name} ({referral_mobile})".strip()
+
+        # ---------------- A) Check for existing lead in same project ----------------
+        existing_lead = SalesLead.objects.filter(
+            project=project,
+            mobile_number=mobile_number,
+        ).first()
+
+        if existing_lead:
+            # Same project + same mobile already exists -> block duplicate
+            raise serializers.ValidationError(
+                {
+                    "mobile_number": (
+                        "A Lead already exists for this mobile number "
+                        "in this project."
+                    )
+                }
+            )
+
+        # ---------------- B) Check for existing LeadOpportunity ----------------
+        opportunity = LeadOpportunity.objects.filter(
+            project=project,
+            mobile_number=mobile_number,
+        ).first()
+
+        # If opportunity exists, prefer its data when our payload is missing something
+        if opportunity:
+            if not first_name and getattr(opportunity, "first_name", None):
+                first_name = opportunity.first_name
+            if not last_name and getattr(opportunity, "last_name", None):
+                last_name = opportunity.last_name
+            if not email and getattr(opportunity, "email", None):
+                email = opportunity.email
+
+            budget = budget or getattr(opportunity, "budget", None)
+            purpose = purpose or getattr(opportunity, "purpose", None)
+            source = source or getattr(opportunity, "source", None)
+            sub_source = sub_source or getattr(opportunity, "sub_source", None)
+
+        # ---------------- C) Create SalesLead (new or converted from opportunity) ----------------
+        lead_kwargs = {
+            "project": project,
+            "first_name": first_name or None,
+            "last_name": last_name or None,
+            "email": email or None,
+            "mobile_number": mobile_number,
+            "walking": True,  # onsite = walk-in
+            "channel_partner": channel_partner,
+            "unknown_channel_partner": unknown_cp or "",
+            "created_by": user if user.is_authenticated else None,
+            "current_owner": user if user.is_authenticated else None,
+            "first_owner": user if user.is_authenticated else None,
+            "nationality": nationality,
+            "age_group": age_group,
+            "unit_configuration": unit_configuration,
+            "budget": budget,
+            "purpose": purpose,
+            "source": source,
+            "sub_source": sub_source,
+	    "assign_to": user if user.is_authenticated else None,
+        }
+
+        if opportunity:
+            # Link this lead to the originating opportunity
+            lead_kwargs["source_opportunity"] = opportunity
+            # (Optional) yahan opportunity ka status "CONVERTED" wagaira bhi set kar sakte ho
+
+        lead = SalesLead.objects.create(**lead_kwargs)
+        if opportunity:
+            # Try project-specific config first
+            status_cfg = (
+                LeadOpportunityStatusConfig.objects.filter(
+                    project=project,
+                    can_convert=True,
+                    is_active=True,
+                ).first()
+                # Fallback: global config (project IS NULL)
+                or LeadOpportunityStatusConfig.objects.filter(
+                    project__isnull=True,
+                    can_convert=True,
+                    is_active=True,
+                ).first()
+            )
+
+            if status_cfg:
+                # Move opportunity to this "converted" status
+                opportunity.status = status_cfg.code
+                # if your model is TimeStamped with updated_at, you can extend update_fields
+                opportunity.save(update_fields=["status"])
+                # (optional) you could also set any "converted" flag here if your model has it
+                # opportunity.is_converted = True
+                # opportunity.save(update_fields=["status", "is_converted"])
+        # ---------------- 2) Address (from residential section) ----------------
+
+        addr_line = (validated_data.get("residential_address") or "").strip()
+        addr_city = (validated_data.get("residence_city") or "").strip()
+        addr_locality = (validated_data.get("residence_locality") or "").strip()
+        addr_pincode = (validated_data.get("residence_pincode") or "").strip()
+
+        if addr_line or addr_city or addr_locality or addr_pincode:
+            SalesLeadAddress.objects.create(
+                sales_lead=lead,
+                flat_or_building=addr_line,
+                area=addr_locality,
+                pincode=addr_pincode,
+                city=addr_city,
+                # state/country optional; app chahe to bhej sakta hai future me
+            )
+
+        # ---------------- 3) Stage history (first stage with for_site=True) ----------------
+        site_stage = (
+            LeadStage.objects.filter(project=project, for_site=True)
+            .order_by("order")
+            .first()
+        )
+
+        stage_history = None
+        if site_stage:
+            stage_history = SalesLeadStageHistory.objects.create(
+                sales_lead=lead,
+                stage=site_stage,
+                event_date=visit_dt,
+                created_by=user if user.is_authenticated else None,
+                notes="Onsite registration – auto stage.",
+            )
+
+        # ---------------- 4) SiteVisit ----------------
+        visit_kwargs = {
+            "lead": lead,
+            "project": project,
+            "member_name": lead.get_full_name() or None,
+            "member_mobile_number": lead.mobile_number,
+            "scheduled_at": visit_dt,
+            "status": "SCHEDULED",
+            "created_by": user if user.is_authenticated else None,
+            # "visit_type": SiteVisitType.ONSITE,  # 👈 enable if you use this
+        }
+
+        site_visit = SiteVisit.objects.create(**visit_kwargs)
+
+        return lead, stage_history, site_visit
+
+
+# salelead/serializers.py
+from rest_framework import serializers
+from .models import (
+    SalesLead,
+    SalesLeadAddress,
+    SalesLeadCPInfo,
+    SalesLeadPersonalInfo,
+    SalesLeadProfessionalInfo,
+    SalesLeadProposalDocument,
+)
+
+
+class SalesLeadBasicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLead
+        # Jo FE se editable fields honi chahiye
+        fields = [
+            "id",
+            "project",
+            "first_name",
+            "last_name",
+            "email",
+            "mobile_number",
+            "tel_res",
+            "tel_office",
+            "company",
+            "budget",
+            "annual_income",
+            "classification",
+            "sub_classification",
+            "source",
+            "sub_source",
+            "status",
+            "sub_status",
+            "purpose",
+            "channel_partner",
+            "unknown_channel_partner",
+            "walking",
+            "offering_types",
+            "current_owner",
+            "assign_to",
+        ]
+        read_only_fields = ["project", "current_owner", "assign_to"]
+        # project, owner change ka separate flow rakh sakta hai agar chaahe
+
+
+class SalesLeadAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadAddress
+        fields = [
+            "id",
+            "flat_or_building",
+            "area",
+            "pincode",
+            "city",
+            "state",
+            "country",
+            "description",
+        ]
+
+
+class SalesLeadCPInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadCPInfo
+        fields = [
+            "id",
+            "cp_user",
+            "referral_code",
+        ]
+
+
+class SalesLeadPersonalInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadPersonalInfo
+        fields = [
+            "id",
+            "date_of_birth",
+            "date_of_anniversary",
+            "already_part_of_family",
+            "secondary_email",
+            "alternate_mobile",
+            "alternate_tel_res",
+            "alternate_tel_off",
+            "visiting_on_behalf",
+            "current_residence_ownership",
+            "current_residence_type",
+            "family_size",
+            "possession_desired_in",
+            "facebook",
+            "twitter",
+            "linkedin",
+        ]
+
+
+class SalesLeadProfessionalInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadProfessionalInfo
+        fields = [
+            "id",
+            "occupation",
+            "organization_name",
+            "office_location",
+            "office_pincode",
+            "designation",
+        ]
+
+
+class SalesLeadProposalDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesLeadProposalDocument
+        fields = [
+            "id",
+            "file",
+            "created_at",
+        ]
+        read_only_fields = ["created_at"]
+
