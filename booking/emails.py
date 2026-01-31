@@ -36,7 +36,7 @@ def send_kyc_request_email(kyc_obj):
     )
 
     # 🔴 FOR NOW: always send to your own Gmail so you can test
-    approver_email = "vasisayed09421@gmail.com"
+    approver_email = "sonuyadav2192004@gmail.com"
 
     # Later you can switch back to project.primary_admin once that's set properly:
     # approver_email = getattr(getattr(kyc_obj.project, "primary_admin", None), "email", None)

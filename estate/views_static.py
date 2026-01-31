@@ -47,7 +47,7 @@ def privacy_policy(request):
         </p>
 
         <h3>Contact</h3>
-        <p>Email: <a href="mailto:vasisayed094@gmail.com">vasisayed094@gmail.com</a></p>
+        <p>Email: <a href="mailto:sonuyadav2192004@gmail.com">sonuyadav2192004@gmail.com</a></p>
       </body>
     </html>
     """
@@ -69,7 +69,7 @@ def data_deletion(request):
           If you want your personal data deleted, please email us at:
         </p>
         <p>
-          <b><a href="mailto:vasisayed094@gmail.com">vasisayed094@gmail.com</a></b><br/>
+          <b><a href="mailto:sonuyadav2192004@gmail.com">sonuyadav2192004@gmail.com</a></b><br/>
           Subject: <b>Delete My Data</b>
         </p>
         <p>

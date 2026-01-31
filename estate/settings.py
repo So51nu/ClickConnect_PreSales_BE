@@ -15,18 +15,11 @@ SECRET_KEY = "django-insecure-__0y*ey0w8w%-$ai*o%wtkg&$*!_6v5_=38-tc5=7iut^em9mr
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 import os
-Raj = "192.168.1.18"
-prathmesh = "192.168.1.28"
-Atharva = "192.168.1.15"
+
 
 ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    prathmesh,
-    Raj,
-    Atharva,
-'presales.myciti.life',
-'api.presale.myciti.life'
+    
+    "localhost","*",
 ]
 
 ZAPIER_META_WEBHOOK_SECRET = "put-a-long-random-secret-here"
@@ -121,7 +114,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.13:5173",
     "http://192.168.1.18:5173",
     "http://192.168.1.15:5173",
-"https://presales.myciti.life",
+    
 ]
 
 CORS_URLS_REGEX = r"^/api/.*$"
@@ -161,14 +154,15 @@ WSGI_APPLICATION = "estate.wsgi.application"
 # ---------------- Database ----------------
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",   # Use PostgreSQL backend
-        "NAME": "vasipresales_db",                   # Database name
-        "USER": "vasipresales_user",                          # Your DB username
-        "PASSWORD": "Presales@SecurePass2025!",      # Your DB password
-        "HOST": "localhost",                         # Or server IP if remote
-        "PORT": "5432",                              # Default PostgreSQL port
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "presale_sonu",              # 👈 NEW DB NAME
+        "USER": "presale_sonu_user",         # 👈 NEW USER
+        "PASSWORD": "StrongPassword@123",    # 👈 wahi password
+        "HOST": "localhost",
+        "PORT": "5432",
     }
 }
+
 # ---------------- Password validation ----------------
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -216,38 +210,38 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'vasisayed09421@gmail.com'
-EMAIL_HOST_PASSWORD = 'zfwl rmkv nawj hiak'
+EMAIL_HOST_USER = 'sonuyadav2192004@gmail.com'
+EMAIL_HOST_PASSWORD = 'lozcepiphjoeqonw'
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'project_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': '/var/log/presales.myciti/django.log',
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['project_file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['project_file'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-    },
-}
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'verbose': {
+#             'format': '{levelname} {asctime} {module} {message}',
+#             'style': '{',
+#         },
+#     },
+#     'handlers': {
+#         'project_file': {
+#             'level': 'INFO',
+#             'class': 'logging.FileHandler',
+#             'filename': '/var/log/presales.myciti/django.log',
+#             'formatter': 'verbose',
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['project_file'],
+#             'level': 'INFO',
+#             'propagate': True,
+#         },
+#         'django.request': {
+#             'handlers': ['project_file'],
+#             'level': 'ERROR',
+#             'propagate': False,
+#         },
+#     },
+# }
