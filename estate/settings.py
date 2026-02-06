@@ -13,14 +13,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-__0y*ey0w8w%-$ai*o%wtkg&$*!_6v5_=38-tc5=7iut^em9mr"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 import os
+DEBUG = True
 
+ALLOWED_HOSTS = ["*",]
 
-ALLOWED_HOSTS = [
-    
-    "localhost","*",
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.presales.clickconnectmedia.cloud",
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+SECURE_SSL_REDIRECT = True  # 👈 abhi false hi rakho
 
 ZAPIER_META_WEBHOOK_SECRET = "put-a-long-random-secret-here"
 MEDIA_URL = "/api/media/"
@@ -114,7 +122,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.13:5173",
     "http://192.168.1.18:5173",
     "http://192.168.1.15:5173",
-    
+    "https://clickconnectmedia.cloud",
+    "https://www.clickconnectmedia.cloud",
+
 ]
 
 CORS_URLS_REGEX = r"^/api/.*$"
@@ -214,34 +224,25 @@ EMAIL_HOST_USER = 'sonuyadav2192004@gmail.com'
 EMAIL_HOST_PASSWORD = 'tcrvitsnimxmltej'
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django.security.DisallowedHost": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+    },
+}
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '{levelname} {asctime} {module} {message}',
-#             'style': '{',
-#         },
-#     },
-#     'handlers': {
-#         'project_file': {
-#             'level': 'INFO',
-#             'class': 'logging.FileHandler',
-#             'filename': '/var/log/presales.myciti/django.log',
-#             'formatter': 'verbose',
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['project_file'],
-#             'level': 'INFO',
-#             'propagate': True,
-#         },
-#         'django.request': {
-#             'handlers': ['project_file'],
-#             'level': 'ERROR',
-#             'propagate': False,
-#         },
-#     },
-# }
