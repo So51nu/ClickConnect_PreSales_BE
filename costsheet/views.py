@@ -8,6 +8,7 @@ from costsheet.models import CostSheetStatus
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from common.tenancy import assert_project_allowed, get_allowed_project_ids
 
 from salelead.models import SalesLead
 from clientsetup.models import (
@@ -121,12 +122,13 @@ class ProjectCostSheetTemplateViewSet(viewsets.ModelViewSet):
 
     serializer_class = ProjectCostSheetTemplateSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
-
     def get_queryset(self):
-        qs = ProjectCostSheetTemplate.objects.filter(created_by=self.request.user)
+        allowed_ids = get_allowed_project_ids(self.request.user)
+        qs = ProjectCostSheetTemplate.objects.filter(project_id__in=allowed_ids)
 
         project_id = self.request.query_params.get("project_id")
         if project_id:
+            assert_project_allowed(self.request, project_id)
             qs = qs.filter(project_id=project_id)
 
         template_id = self.request.query_params.get("template_id")
@@ -134,6 +136,7 @@ class ProjectCostSheetTemplateViewSet(viewsets.ModelViewSet):
             qs = qs.filter(template_id=template_id)
 
         return qs
+
 
 
 class CostSheetTemplateByProjectAPIView(APIView):
@@ -154,7 +157,7 @@ class CostSheetTemplateByProjectAPIView(APIView):
                 {"detail": "project_id is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+        assert_project_allowed(request, project_id)
         project = get_object_or_404(Project, pk=project_id)
 
         templates = CostSheetTemplate.objects.filter(
@@ -197,10 +200,14 @@ class CostSheetLeadInitAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, lead_id):
+        allowed_ids = get_allowed_project_ids(request.user)
+
         lead = get_object_or_404(
             SalesLead.objects.select_related("project"),
             pk=lead_id,
+            project_id__in=allowed_ids,
         )
+
         project = lead.project
         today = timezone.now().date()
 

@@ -30,8 +30,7 @@ from .utils import (
 User = get_user_model()
 from django.conf import settings
 from .models import ClientBrand, Role  # adjust import paths
-
-
+from django.db.models import Q 
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -44,24 +43,36 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]  # 👈 so signature file upload works
-
     def get_queryset(self):
         user = self.request.user
 
-        # Admin / Superadmin / staff => sab users (ya later tum admin ke team tak restrict kar sakte ho)
-        if user.is_superuser or user.is_staff or getattr(user, "role", None) in {
-            Role.SUPERADMIN,
-            Role.ADMIN,
-        }:
+        # Staff / Superuser => all
+        if user.is_superuser or user.is_staff or getattr(user, "role", None) == Role.SUPERADMIN:
             return User.objects.all().order_by("id")
 
-        # Baaki logo ko sirf khud ka record dikhana
-        return User.objects.filter(id=user.id)
+        role = getattr(user, "role", None)
 
+        # ADMIN => only admin + his team members
+        if role == Role.ADMIN:
+            return User.objects.filter(Q(id=user.id) | Q(admin_id=user.id)).order_by("id")
+
+        # Team users => only their admin bucket (admin + all team)
+        admin_id = getattr(user, "admin_id", None)
+        if admin_id:
+            return User.objects.filter(Q(id=admin_id) | Q(admin_id=admin_id)).order_by("id")
+
+        # fallback => only self
+        return User.objects.filter(id=user.id)
     def perform_create(self, serializer):
-        # RegisterUserView already hai; agar yaha se create karoge to created_by set kar sakte ho
         creator = self.request.user if self.request.user.is_authenticated else None
+
+        # If ADMIN creates a user, auto-bind new user under that admin tenant
+        if creator and getattr(creator, "role", None) == Role.ADMIN:
+            serializer.save(created_by=creator, admin=creator)
+            return
+
         serializer.save(created_by=creator)
+
 
     @action(detail=False, methods=["get", "patch"], url_path="me")
     def me(self, request):

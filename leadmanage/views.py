@@ -22,6 +22,9 @@ from .serializers import (
 )
 from accounts.models import User
 from setup.serializers import  UnitConfigurationSerializer
+from common.tenancy import assert_project_allowed
+from salelead.utils import _project_ids_for_user
+
 class IsAuth(permissions.IsAuthenticated):
     pass
 
@@ -46,6 +49,7 @@ class LeadMastersAPIView(APIView):
         project_id = request.query_params.get("project_id")
         if not project_id:
             return Response({"detail": "project_id is required."}, status=400)
+        assert_project_allowed(request, project_id)
 
         # ---------------------------
         # Project-scoped masters
@@ -124,18 +128,20 @@ class LeadClassificationViewSet(viewsets.ModelViewSet):
     queryset = LeadClassification.objects.all()
     serializer_class = LeadClassificationTreeSerializer
     permission_classes = [permissions.IsAuthenticated]
-
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_id=pid)
-        parent = self.request.query_params.get("parent")
-        if parent == "root":
-            qs = qs.filter(parent__isnull=True)
-        elif parent:
-            qs = qs.filter(parent_id=parent)
-        return qs.order_by("parent__id", "name")
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
+
+
 
 
 class LeadSourceViewSet(viewsets.ModelViewSet):
@@ -145,35 +151,17 @@ class LeadSourceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        request = self.request
 
-        pid = request.query_params.get("project_id")
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
 
-        # allow ?sales_lead= or ?sales_lead_id=
-        sales_lead_id = (
-            request.query_params.get("sales_lead")
-            or request.query_params.get("sales_lead_id")
-        )
+        pid = self.request.query_params.get("project_id")
+        if not pid:
+            return qs.none()  # Option A: project_id required
 
-        if sales_lead_id and not pid:
-            try:
-                lead = SalesLead.objects.only("project_id").get(pk=sales_lead_id)
-                pid = lead.project_id
-            except SalesLead.DoesNotExist:
-                # invalid lead id => no sources
-                return qs.none()
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
 
-        if pid:
-            qs = qs.filter(project_id=pid)
-
-        # ---------- 2) parent filtering (unchanged) ----------
-        parent = request.query_params.get("parent")
-        if parent == "root":
-            qs = qs.filter(parent__isnull=True)
-        elif parent:
-            qs = qs.filter(parent_id=parent)
-
-        return qs.order_by("parent__id", "name")
 
 
 class LeadStageViewSet(viewsets.ModelViewSet):
@@ -183,10 +171,17 @@ class LeadStageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_id=pid)
-        return qs.order_by("order", "name")
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
+
 
 
 class LeadStatusViewSet(viewsets.ModelViewSet):
@@ -196,10 +191,16 @@ class LeadStatusViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_id=pid)
-        return qs.order_by("name")
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
 
 
 class LeadSubStatusViewSet(viewsets.ModelViewSet):
@@ -209,10 +210,16 @@ class LeadSubStatusViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(status__project_id__in=allowed_ids)
+
         status_id = self.request.query_params.get("status_id")
         if status_id:
             qs = qs.filter(status_id=status_id)
+
         return qs.order_by("name")
+
 
 
 class LeadPurposeViewSet(viewsets.ModelViewSet):
@@ -222,10 +229,17 @@ class LeadPurposeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_id=pid)
-        return qs.order_by("name")
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
+
 
 
 class ProjectLeadViewSet(viewsets.ModelViewSet):
@@ -235,10 +249,17 @@ class ProjectLeadViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_id=pid)
-        return qs
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
+
 
 
 class LeadBudgetOfferViewSet(viewsets.ModelViewSet):
@@ -248,10 +269,17 @@ class LeadBudgetOfferViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_lead__project_id=pid)
-        return qs
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
+
 
 
 class ProjectLeadSiteVisitSettingViewSet(viewsets.ModelViewSet):
@@ -261,11 +289,16 @@ class ProjectLeadSiteVisitSettingViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_lead__project_id=pid)
-        return qs
 
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
+        pid = self.request.query_params.get("project_id")
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
 
 class ProjectLeadReportingViewSet(viewsets.ModelViewSet):
     queryset = ProjectLeadReporting.objects.select_related("project_lead").all()
@@ -274,10 +307,16 @@ class ProjectLeadReportingViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        allowed_ids = _project_ids_for_user(self.request.user)
+        qs = qs.filter(project_id__in=allowed_ids)
+
         pid = self.request.query_params.get("project_id")
-        if pid:
-            qs = qs.filter(project_lead__project_id=pid)
-        return qs
+        if not pid:
+            return qs.none()  # Option A: project_id required
+
+        assert_project_allowed(self.request, pid)
+        return qs.filter(project_id=pid).order_by("order", "name")
 
 
 class NewLeadAssignmentRuleViewSet(viewsets.ModelViewSet):

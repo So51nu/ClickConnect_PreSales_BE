@@ -211,7 +211,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'sonuyadav2192004@gmail.com'
-EMAIL_HOST_PASSWORD = 'lozcepiphjoeqonw'
+EMAIL_HOST_PASSWORD = 'tcrvitsnimxmltej'
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 

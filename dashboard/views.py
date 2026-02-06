@@ -6,7 +6,7 @@ from accounts.models import ProjectUserAccess
 from django.db.models import Count, Sum, Avg, Max, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-
+from salelead.utils import _project_ids_for_user
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -203,56 +203,44 @@ def apply_date_filter_date(qs, field_name, from_date, to_date):
 #         return qs.filter(belongs_to=admin_user)
 
 #     return qs.none()
-
-
 def get_user_projects(user):
     """
-    FINAL logic:
-    ADMIN / FULL_CONTROL / MANAGER → projects of their admin
+    Option A:
+    - ADMIN -> own projects (belongs_to)
+    - Others -> only projects assigned via ProjectUserAccess (through _project_ids_for_user)
     """
     qs = Project.objects.all()
 
-    if user.is_staff:
+    if user.is_staff or user.is_superuser:
         return qs
 
-    admin_user = get_effective_admin(user)
-
-    if admin_user:
-        return qs.filter(belongs_to=admin_user)
-
-    return qs.none()
-
+    allowed_ids = _project_ids_for_user(user)
+    return qs.filter(id__in=allowed_ids)
 
 
 def get_filtered_project_ids(request, user):
     """
-    1) Get allowed projects for user.
-    2) If ?projects=1,2 is passed, restrict to those IDs (intersection).
-    Returns a list of project IDs.
+    1) Allowed projects for user (from _project_ids_for_user)
+    2) If ?projects=1,2 passed => intersection
     """
-    allowed_qs = get_user_projects(user)
+    allowed_ids = set(_project_ids_for_user(user))
 
     param = request.query_params.get("projects")
-    if param:
-        try_ids = []
-        for part in param.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            try:
-                try_ids.append(int(part))
-            except ValueError:
-                # ignore invalid
-                continue
-        if try_ids:
-            allowed_qs = allowed_qs.filter(id__in=try_ids)
+    if not param:
+        return list(allowed_ids)
 
-    return list(allowed_qs.values_list("id", flat=True).distinct())
+    requested = set()
+    for part in param.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            requested.add(int(part))
+        except Exception:
+            continue
 
+    return list(allowed_ids.intersection(requested))
 
-# =====================================================
-# Admin Dashboard
-# =====================================================
 
 def build_admin_dashboard(user, project_ids, from_date, to_date):
     """

@@ -26,6 +26,7 @@ from .serializers import (
 )
 from .utils import generate_unique_referral_code
 from django.utils import timezone
+from accounts.models import Role
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -83,6 +84,12 @@ from clientsetup.models import Project
 from .models import ChannelPartnerProfile
 
 User = get_user_model()
+def effective_admin(user):
+    if user.is_staff or user.is_superuser:
+        return None
+    if getattr(user, "role", None) == Role.ADMIN:
+        return user
+    return getattr(user, "admin", None)
 
 
 # ---------- Pagination ----------
@@ -107,18 +114,33 @@ class AgentTypeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
-
 class PartnerTierViewSet(viewsets.ModelViewSet):
-    """
-    CRUD operations for Partner Tiers
-    """
-    queryset = PartnerTier.objects.all().order_by('-created_at')
     serializer_class = PartnerTierSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
-    
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = PartnerTier.objects.all().order_by("-created_at")
+
+        if user.is_staff or user.is_superuser:
+            return qs
+
+        admin_user = effective_admin(user)
+        if not admin_user:
+            return PartnerTier.objects.none()
+
+        return qs.filter(admin=admin_user)
+
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        user = self.request.user
+        if user.is_staff or user.is_superuser:
+            serializer.save(created_by=user)
+            return
+
+        admin_user = effective_admin(user) or user
+        serializer.save(created_by=user, admin=admin_user)
+
 
 
 class CrmIntegrationViewSet(viewsets.ModelViewSet):
@@ -155,6 +177,12 @@ class ChannelPartnerViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
+        admin_user = effective_admin(self.request.user)
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            if not admin_user:
+                return ChannelPartnerProfile.objects.none()
+            queryset = queryset.filter(Q(user__admin=admin_user) | Q(user=admin_user))
+
         queryset = ChannelPartnerProfile.objects.select_related(
             'user', 'source', 'agent_type', 'partner_tier', 
             'crm_integration', 'parent_agent'

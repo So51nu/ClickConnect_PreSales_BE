@@ -13,7 +13,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField  # agar PG ho to yeh bhi option hai
 from django.core.validators import MinValueValidator
 
-
+from django.db.models import Q
 User = settings.AUTH_USER_MODEL
 
 class NotificationType(models.TextChoices):
@@ -92,7 +92,7 @@ class Project(TimeStamped):
     name = models.CharField(max_length=200)
     location = models.CharField(max_length=255, blank=True)
     developer = models.CharField(max_length=200, blank=True)
-    rera_no = models.CharField(max_length=50, unique=True, blank=True)
+    rera_no = models.CharField(max_length=50, blank=True)
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     at_lead_time_email=models.BooleanField(default=True)
@@ -138,6 +138,13 @@ class Project(TimeStamped):
     class Meta:
         indexes = [models.Index(fields=["status"]), models.Index(fields=["approval_status"])]
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["belongs_to", "rera_no"],
+                condition=~Q(rera_no=""),
+                name="uniq_project_rera_per_admin",
+            )
+        ]
 
     def clean(self):
         if self.start_date and self.end_date and self.start_date > self.end_date:
@@ -426,7 +433,7 @@ class ProjectBankProduct(TimeStamped):
 
 
 class Notification(TimeStamped):
-    code = models.CharField(max_length=30, unique=True)  # e.g., n1
+    code = models.CharField(max_length=30)  # e.g., n1
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True, related_name="notifications")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
     notif_type = models.CharField(max_length=10, choices=NotificationType.choices, default=NotificationType.SYSTEM)
@@ -800,6 +807,11 @@ class CommercialOffer(TimeStamped):
         blank=True,
         help_text="Required when target_type=CHANNEL_PARTNER",
     )
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["admin", "code"], name="uniq_tier_code_per_admin")
+        ]
+
 
     # Value
     value_type = models.CharField(
